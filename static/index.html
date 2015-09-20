@@ -1,7 +1,15 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <meta charset="utf-8" />
         <title>Discount Ascii Warehouse</title>
+        <style type="text/css">
+            .products table {
+                border: 1px solid blue;
+                width: 100%;
+                background: #eee;
+            }
+        </style>
     </head>
     <body>
         <header>
@@ -9,11 +17,139 @@
 
             <p>Here you're sure to find a bargain on some of the finest ascii available to purchase. Be sure to peruse our selection of ascii faces in an exciting range of sizes and prices.</p>
 
-            <p>But first, a word from our sponsors:</p> <script>document.write('<img class="ad" src="/ad/?r=' + Math.floor(Math.random()*1000) + '"/>');</script>
+            <p>But first, a word from our sponsors:</p>
+            
+            <script>
+                function getAd() {
+                    var adIndex = Math.floor(Math.random()*1000);
+                    var ad = document.createElement('img');
+                    ad.classList.add('ad');
+                    ad.src = '/ad/?r=' + adIndex;
+                    return ad;
+                }
+                
+                function getProducts(limit, skip) {
+                    var defer = {then:function(cb){this.cb=cb}}; // one line promise
+                    
+                    var req = new XMLHttpRequest();
+                    var params = "?limit=" + (limit || 0) + "&skip=" + (skip || 0);
+                    
+                    req.open("get", "/api/products" + params);
+                    req.onreadystatechange = function () {
+                        if (this.readyState == 4 && this.status == 200) {
+                            var res = this.responseText;
+                            try {
+                                var productList = "[" + res.trim().split("\n").join(",") + "]";
+                                
+                                console.log("productList", productList);
+                                var products = JSON.parse(productList);
+                                
+                                console.log("products",products);
+                                if (defer.cb) {
+                                    console.log("IF TRUE", defer.cb.length, products.length);
+                                    defer.cb(products);
+                                    defer.cb = null;
+                                } else {
+                                    console.log("ELSE", defer.cb);
+                                }
+                            } catch (e) {
+                                console.log("CATCH ERROR", e, e.stack);
+                                if (defer.cb) {
+                                    defer.cb(null);
+                                }
+                            }
+                        }
+                    }
+                    req.send();
+                    
+                    return defer;
+                }
+                    
+                function append(elem, child) {
+                    return elem.appendChild(child);
+                }
+                
+                function createRow(product) {
+                    var row = document.createElement("tr");
+                    
+                    function createCell(text) {
+                        var cell = document.createElement("td");
+                        cell.innerText = text;
+                        return cell;
+                    }
+                    
+                    append(row, createCell(product.id));
+                    append(row, createCell(product.face));
+                    append(row, createCell(product.size));
+                    append(row, createCell(product.price));
+                    append(row, createCell(product.date));
+                    
+                    return row;
+                }
+                
+                function populateGrid (products) {
+                    console.log("THEN", products);
+                    products.map(function (product, i) {
+                        console.log(i, product.face);
+                        append(document.querySelector(".products tbody"), createRow(product));
+                    });
+                }
+                
+                var productIndex = 0;
+                getProducts(100).then(populateGrid);
+                
+                document.querySelector("body header").appendChild(getAd());
+                
+                function infinityScroll(e) {
+                    var html = document.documentElement;
+                    var windowHeight = html.clientHeight;
+                    var triggerPoint = windowHeight * 5;
+                    var pxToEnd = html.scrollHeight - (window.scrollY + windowHeight);
+                    
+                    if (pxToEnd < triggerPoint) {
+                        console.log("GET MORE!!!", productIndex, pxToEnd, windowHeight);
+                        getProducts(100, productIndex).then(populateGrid);
+                    }
+                }
+                
+                function throttle(fn, delta) {
+                    var last = +new Date;
+                    return function () {
+                        var diff = (+new Date) - last;
+                        if (diff >= delta) {
+                            fn.apply(this, arguments);
+                            last = +new Date;
+                        }
+                    };
+                }
+                
+                document.addEventListener("scroll", throttle(infinityScroll, 250));
+                
+//                 document.write('<img class="ad" src="/ad/?r=' + adIndex + '"/>');
+            </script>
         </header>
 
         <section class="products">
-            ... products go here ...
+           <table>
+               <thead>
+                   <tr>
+                       <td>ID</td>
+                       <td>Face</td>
+                       <td>Font Size</td>
+                       <td>Price</td>
+                       <td>Date</td>
+                   </tr>
+               </thead>
+               <tbody>
+                   <tr>
+                       <td>1</td>
+                       <td>;}-</td>
+                       <td>111 px</td>
+                       <td>$222.00</td>
+                       <td>333 days ago</td>
+                   </tr>
+               </tbody>
+            </table>
         </section>
     </body>
 </html>
