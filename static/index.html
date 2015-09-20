@@ -4,19 +4,24 @@
         <meta charset="utf-8" />
         <title>Discount Ascii Warehouse</title>
         <style type="text/css">
+            
+            .loading { cursor: wait; }
+            
             .products table {
-                border: 1px solid blue;
+                border: 1px solid #fafafa;
                 width: 100%;
-                background: #eee;
                 font-family: sans-serif;
             }
             
             .products table td {
                 padding: 10px;
+                background: #fafafa;
+                text-align: center;
             }
             
             .products table td.ad {
                 text-align: center;
+                padding: 20px;
             }
         </style>
     </head>
@@ -108,14 +113,105 @@
                 return cell;
             }
 
+            function createCellFace(product) {
+                var cell = createCell(product.face);
+                cell.style.fontSize = product.size + "px";
+                return cell;
+            }
+
+            function createCellSize(size) {
+                size = size + "px";
+                var cell = createCell(size);
+                cell.style.fontSize = size;
+                return cell;
+            }
+
+            function createCellPrice(price) {
+                var cell = createCell("$"+(price/100).toFixed(2));
+                return cell;
+            }
+            
+            function relativeDate(date) {
+                // todo: reference date (333 days ago)
+                // precision (ms,s,m,h,d,m,a);
+                
+                date = new Date(date);
+                var local = new Date(date);
+                local.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+                
+//                     return local.toJSON().slice(0, 10);
+                
+                var diff = (+new Date) - (+new Date(local));
+                var ago = "SOME TIME AGO";
+                
+                console.log(ago, +new Date(date), date, diff);
+                
+                if (diff < 1000) {
+                    ago = Math.round(diff) + " ms ago";
+                    console.log("ms ago", ago, diff);
+
+                    return ago;
+                }
+                
+                diff /= 1000;
+                
+                if (diff < 60) {
+                    ago = Math.round(diff) + " seconds ago";
+                    console.log("s ago", ago, diff);
+
+                    return ago;
+                }
+                
+                diff /= 60;
+                
+                if (diff < 60) {
+                    ago = Math.round(diff) + " minutes ago";
+                    console.log("minutes ago", ago, diff);
+
+                    return ago;
+                }
+                
+                diff /= 60;
+                
+                if (diff < 24) {
+                    ago = Math.round(diff) + " hours ago";
+                    console.log("hours ago", ago, diff);
+
+                    return ago;
+                }
+                
+                diff /= 24;
+                
+                if (diff <= 7) {
+                    ago = Math.round(diff) + " days ago";
+                    console.log("days ago", ago, diff);
+
+                    return ago;
+                }
+                
+                diff /= 7;
+                
+                if (diff > 1) {
+                    ago = date.toJSON().slice(0, 10);
+                    console.log("weeks ago", ago, diff);
+
+                    return ago;
+                }
+            }
+            
+            function createCellDate(date) {
+                var cell = createCell(relativeDate(date));
+                return cell;
+            }
+
             function createRow(product) {
                 var row = document.createElement("tr");
 
                 append(row, createCell(product.id));
-                append(row, createCell(product.face));
-                append(row, createCell(product.size));
-                append(row, createCell(product.price));
-                append(row, createCell(product.date));
+                append(row, createCellFace(product));
+                append(row, createCellSize(product.size));
+                append(row, createCellPrice(product.price));
+                append(row, createCellDate(product.date));
 
                 return row;
             }
