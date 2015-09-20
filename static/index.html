@@ -5,7 +5,23 @@
         <title>Discount Ascii Warehouse</title>
         <style type="text/css">
             
-            .loading { cursor: wait; }
+            .loading {
+                cursor: wait;
+                background: #fff;
+                width: 10px;
+                height: 10px;
+                margin: 33px auto;
+                border-top: 10px solid #00f;
+                border-left: 10px solid #88f;
+                border-bottom: 10px solid #bbf;
+                border-right: 10px solid #eef;
+                animation: spinner 1.1s linear infinite;
+                border-radius: 50%;
+            }
+            
+            @keyframes spinner {
+                to {transform: rotate(360deg);}
+            }
             
             .products table {
                 border: 1px solid #fafafa;
@@ -19,9 +35,21 @@
                 text-align: center;
             }
             
+            .products tbody tr:hover td {
+                background: #fff;
+            }
+            
             .products table td.ad {
                 text-align: center;
                 padding: 20px;
+            }
+            
+            .products table td.ad span {
+                color: #fff;
+                text-shadow: 0 0 5px #000;
+                position: relative;
+                left: -50px;
+                top: -20px;
             }
         </style>
     </head>
@@ -38,40 +66,34 @@
            <table>
                <thead>
                    <tr>
-                       <td>ID</td>
-                       <td>Face</td>
-                       <td>Font Size</td>
-                       <td>Price</td>
-                       <td>Date</td>
+                       <th class="sortable">ID</th>
+                       <th>Face</th>
+                       <th class="sortable">Font Size</th>
+                       <th class="sortable">Price</th>
+                       <th>Date</th>
                    </tr>
                </thead>
-               <tbody>
-                   <tr>
-                       <td>1</td>
-                       <td>;}-</td>
-                       <td>111 px</td>
-                       <td>$222.00</td>
-                       <td>333 days ago</td>
-                   </tr>
-               </tbody>
+               <tbody></tbody>
             </table>
         </section>
         
         <script>
+            var adIndex = Math.floor(Math.random()*1000);
+            
             function getAd() {
-                var adIndex = Math.floor(Math.random()*1000);
+                adIndex = Math.floor((adIndex + Math.floor(Math.random()*1000)) / 2);
                 var ad = document.createElement('img');
                 ad.classList.add('ad');
                 ad.src = '/ad/?r=' + adIndex;
                 return ad;
             }
 
-            function getProducts(limit, skip) {
+            function getProducts(limit, skip, sort) {
                 var defer = {then:function(cb){this.cb=cb}}; // one line promise
                 // lock throttle
-                canInfinityScroll = false;
+                infinityScroll.lock();
                 var req = new XMLHttpRequest();
-                var params = "?limit=" + (limit || 0) + "&skip=" + (skip || 0);
+                var params = "?limit=" + (limit || 0) + "&skip=" + (skip || 0) + "&sort=" + (sort || 'id','');
 
                 req.open("get", "/api/products" + params);
                 req.onreadystatechange = function () {
@@ -98,6 +120,7 @@
                         }
                     }
                 }
+                
                 req.send();
 
                 return defer;
@@ -132,8 +155,6 @@
             }
             
             function relativeDate(date) {
-                // todo: reference date (333 days ago)
-                // precision (ms,s,m,h,d,m,a);
                 
                 date = new Date(date);
                 var local = new Date(date);
@@ -142,7 +163,11 @@
 //                     return local.toJSON().slice(0, 10);
                 
                 var diff = (+new Date) - (+new Date(local));
-                var ago = "SOME TIME AGO";
+                var ago = "some time ago";
+                
+                function pluralize(n) {
+                    return n|0>1?'s':'';
+                }
                 
                 console.log(ago, +new Date(date), date, diff);
                 
@@ -156,7 +181,7 @@
                 diff /= 1000;
                 
                 if (diff < 60) {
-                    ago = Math.round(diff) + " seconds ago";
+                    ago = Math.round(diff) + " second" + pluralize(diff) + " ago";
                     console.log("s ago", ago, diff);
 
                     return ago;
@@ -165,7 +190,7 @@
                 diff /= 60;
                 
                 if (diff < 60) {
-                    ago = Math.round(diff) + " minutes ago";
+                    ago = Math.round(diff) + " minute" + pluralize(diff) + " ago";
                     console.log("minutes ago", ago, diff);
 
                     return ago;
@@ -174,7 +199,7 @@
                 diff /= 60;
                 
                 if (diff < 24) {
-                    ago = Math.round(diff) + " hours ago";
+                    ago = Math.round(diff) + " hour" + pluralize(diff) + " ago";
                     console.log("hours ago", ago, diff);
 
                     return ago;
@@ -183,7 +208,7 @@
                 diff /= 24;
                 
                 if (diff <= 7) {
-                    ago = Math.round(diff) + " days ago";
+                    ago = Math.round(diff) + " day" + pluralize(diff) + " ago";
                     console.log("days ago", ago, diff);
 
                     return ago;
@@ -193,7 +218,7 @@
                 
                 if (diff > 1) {
                     ago = date.toJSON().slice(0, 10);
-                    console.log("weeks ago", ago, diff);
+                    console.log("week" + pluralize(diff) + " ago", ago, diff);
 
                     return ago;
                 }
@@ -219,11 +244,15 @@
             function createAdRow() {
                 console.log("createAdRow");
                 var row = document.createElement("tr");
+                var distinct = document.createElement("span");
                 var ad = createCell();
+                
                 ad.colSpan = 5;
                 ad.classList.add('ad');
+                distinct.innerText = adIndex;
                 
                 append(ad, getAd());
+                append(ad, distinct);
                 append(row, ad);
 
                 return row;
@@ -232,7 +261,7 @@
             function populateGrid (products) {
                 console.log("THEN", products.length);
                 // release throttle
-                canInfinityScroll = true;
+                infinityScroll.unlock();
                 products.map(function (product, i) {
                     insertRowIntoGrid(createRow(product));
                     
@@ -249,14 +278,6 @@
                 append(gridBody, row);
             }
 
-            var gridBody = document.querySelector(".products tbody");
-            var productIndex = 0;
-            var canInfinityScroll = true;
-
-            getProducts(100).then(populateGrid);
-
-            document.querySelector("body header").appendChild(getAd());
-
             function infinityScroll(e) {
                 var html = document.documentElement;
                 var windowHeight = html.clientHeight;
@@ -267,6 +288,31 @@
                     console.log("GET MORE!!!", productIndex, pxToEnd, windowHeight);
                     getProducts(100, productIndex).then(populateGrid);
                 }
+            }
+            
+            function loading() {
+                this.node = document.createElement("div");
+                this.show = function () {
+                    this.node.style.display = "block";
+                };
+                this.hide = function () {
+                    this.node.style.display = "none";
+                };
+                
+                this.node.classList.add("loading");
+                
+                return this;
+            }
+            
+            
+            infinityScroll.unlock = function () {
+                canInfinityScroll = true;
+                loader.hide();
+            }
+            
+            infinityScroll.lock = function () {
+                canInfinityScroll = false;
+                loader.show();
             }
 
             function throttle(fn, delta) {
@@ -279,6 +325,18 @@
                     }
                 };
             }
+
+            var productsSection = document.querySelector(".products");
+            var gridBody = document.querySelector(".products tbody");
+            var loader = new loading();
+            var productIndex = 0;
+            var canInfinityScroll = true;
+
+            getProducts(100).then(populateGrid);
+
+            document.querySelector("body header").appendChild(getAd());
+            
+            append(productsSection, loader.node);
 
             document.addEventListener("scroll", throttle(infinityScroll, 250));
 
