@@ -5,7 +5,20 @@
         <title>Discount Ascii Warehouse</title>
         <style type="text/css">
             
+            html, body {
+                font-family: Helvetica;
+                margin: 0;
+                padding: 0;
+            }
+            
             .loading {
+                position: relative;
+                text-align: center;
+            }
+            
+            .loading .loader {
+                position: relative;
+                display: inline-block;
                 cursor: wait;
                 background: #fff;
                 width: 10px;
@@ -19,14 +32,68 @@
                 border-radius: 50%;
             }
             
+            .loading .label {
+                position: relative;
+                top: -45px;
+                left: 12px;
+            }
+            
             @keyframes spinner {
                 to {transform: rotate(360deg);}
+            }
+            
+            header {
+                background: #a0f url(http://placekitten.com/1024/768?image=2) center center no-repeat;
+                background-size: cover;
+                padding: 40px;
+            }
+            
+            header h1 {
+                background-color: rgba(255,255,255,0.5);
+                padding: 10px;
+                max-width: 50%;
+                text-shadow: 0 0 5px #fff;
+            }
+            
+            header p {
+                background-color: rgba(255,255,255,0.5);
+                padding: 10px;
+                max-width: 50%;
+                text-shadow: 0 0 1px #000;
+            }
+            
+            header img {
+                background-color: rgba(255,255,255,0.2);
+                padding: 10px;
+            }
+            
+            .products {
+                margin-top: 20px;
             }
             
             .products table {
                 border: 1px solid #fafafa;
                 width: 100%;
                 font-family: sans-serif;
+            }
+            
+            .products table th {
+                padding: 10px;
+                transition: all 1s ease;
+                font-weight: normal;
+            }
+            
+            .products table th.sortable {
+                cursor: pointer;
+            }
+            
+            .products table th.sortable:hover {
+                background: #eee;
+            }
+            
+            .products table th.active {
+                background: #ccc;
+                font-weight: bold;
             }
             
             .products table td {
@@ -66,10 +133,10 @@
            <table>
                <thead>
                    <tr>
-                       <th class="sortable">ID</th>
+                       <th class="sortable" data-sort-by="id">ID</th>
                        <th>Face</th>
-                       <th class="sortable">Font Size</th>
-                       <th class="sortable">Price</th>
+                       <th class="sortable" data-sort-by="size">Font Size</th>
+                       <th class="sortable" data-sort-by="price">Price</th>
                        <th>Date</th>
                    </tr>
                </thead>
@@ -89,11 +156,10 @@
             }
 
             function getProducts(limit, skip, sort) {
-                var defer = {then:function(cb){this.cb=cb}}; // one line promise
-                // lock throttle
+                var defer = {then:function(cb){this.cb=cb}};
                 infinityScroll.lock();
                 var req = new XMLHttpRequest();
-                var params = "?limit=" + (limit || 0) + "&skip=" + (skip || 0) + "&sort=" + (sort || 'id','');
+                var params = "?limit=" + (limit || 0) + "&skip=" + (skip || 0) + "&sort=" + (sort || 'id');
 
                 req.open("get", "/api/products" + params);
                 req.onreadystatechange = function () {
@@ -102,18 +168,13 @@
                         try {
                             var productList = "[" + res.trim().split("\n").join(",") + "]";
 
-                            console.log("productList", productList.length, "bytes");
                             var products = JSON.parse(productList);
 
-                            console.log("products", products.length);
                             if (defer.cb) {
                                 defer.cb(products);
                                 defer.cb = null;
-                            } else {
-                                console.log("ELSE", defer.cb);
                             }
                         } catch (e) {
-                            console.log("CATCH ERROR", e, e.stack);
                             if (defer.cb) {
                                 defer.cb(null);
                             }
@@ -155,26 +216,19 @@
             }
             
             function relativeDate(date) {
-                
                 date = new Date(date);
                 var local = new Date(date);
                 local.setMinutes(date.getMinutes() - date.getTimezoneOffset());
                 
-//                     return local.toJSON().slice(0, 10);
-                
                 var diff = (+new Date) - (+new Date(local));
-                var ago = "some time ago";
+                var ago;
                 
                 function pluralize(n) {
                     return n|0>1?'s':'';
                 }
                 
-                console.log(ago, +new Date(date), date, diff);
-                
                 if (diff < 1000) {
                     ago = Math.round(diff) + " ms ago";
-                    console.log("ms ago", ago, diff);
-
                     return ago;
                 }
                 
@@ -182,8 +236,6 @@
                 
                 if (diff < 60) {
                     ago = Math.round(diff) + " second" + pluralize(diff) + " ago";
-                    console.log("s ago", ago, diff);
-
                     return ago;
                 }
                 
@@ -191,8 +243,6 @@
                 
                 if (diff < 60) {
                     ago = Math.round(diff) + " minute" + pluralize(diff) + " ago";
-                    console.log("minutes ago", ago, diff);
-
                     return ago;
                 }
                 
@@ -200,8 +250,6 @@
                 
                 if (diff < 24) {
                     ago = Math.round(diff) + " hour" + pluralize(diff) + " ago";
-                    console.log("hours ago", ago, diff);
-
                     return ago;
                 }
                 
@@ -209,8 +257,6 @@
                 
                 if (diff <= 7) {
                     ago = Math.round(diff) + " day" + pluralize(diff) + " ago";
-                    console.log("days ago", ago, diff);
-
                     return ago;
                 }
                 
@@ -218,8 +264,6 @@
                 
                 if (diff > 1) {
                     ago = date.toJSON().slice(0, 10);
-                    console.log("week" + pluralize(diff) + " ago", ago, diff);
-
                     return ago;
                 }
             }
@@ -242,7 +286,6 @@
             }
 
             function createAdRow() {
-                console.log("createAdRow");
                 var row = document.createElement("tr");
                 var distinct = document.createElement("span");
                 var ad = createCell();
@@ -259,14 +302,11 @@
             }
 
             function populateGrid (products) {
-                console.log("THEN", products.length);
-                // release throttle
                 infinityScroll.unlock();
                 products.map(function (product, i) {
                     insertRowIntoGrid(createRow(product));
                     
                     if (productIndex && (productIndex % 20 == 0)) {
-                        console.log("SHOW AD", productIndex, productIndex % 20);
                         insertRowIntoGrid(createAdRow());
                     }
                     
@@ -285,13 +325,20 @@
                 var pxToEnd = html.scrollHeight - (window.scrollY + windowHeight);
 
                 if (canInfinityScroll && pxToEnd < triggerPoint) {
-                    console.log("GET MORE!!!", productIndex, pxToEnd, windowHeight);
-                    getProducts(100, productIndex).then(populateGrid);
+                    getProducts(100, productIndex, currentSort).then(populateGrid);
                 }
             }
             
             function loading() {
                 this.node = document.createElement("div");
+                
+                var loader = document.createElement("span");
+                var label = document.createElement("span");
+                
+                label.innerText = "loading...";
+                this.node.appendChild(loader);
+                this.node.appendChild(label);
+                
                 this.show = function () {
                     this.node.style.display = "block";
                 };
@@ -300,6 +347,8 @@
                 };
                 
                 this.node.classList.add("loading");
+                loader.classList.add("loader");
+                label.classList.add("label");
                 
                 return this;
             }
@@ -325,22 +374,40 @@
                     }
                 };
             }
+            
+            function activateSort(sort) {
+                gridBody.innerHTML = "";
+                productIndex = 0;
+                currentSort = sort;
+                getProducts(100, productIndex, currentSort).then(populateGrid);
+            }
 
             var productsSection = document.querySelector(".products");
             var gridBody = document.querySelector(".products tbody");
             var loader = new loading();
             var productIndex = 0;
+            var currentSort = "id";
             var canInfinityScroll = true;
 
             getProducts(100).then(populateGrid);
 
-            document.querySelector("body header").appendChild(getAd());
-            
+            append(document.querySelector("body header"), getAd());
             append(productsSection, loader.node);
 
             document.addEventListener("scroll", throttle(infinityScroll, 250));
-
-            //                 document.write('<img class="ad" src="/ad/?r=' + adIndex + '"/>');
+            
+            var sortable = productsSection.querySelectorAll("thead .sortable");
+            
+            for(var i = 0; i < sortable.length; i++) {
+                (function (sort) {
+                    sort.addEventListener("click", function () {
+                        var active = productsSection.querySelector("thead .active");
+                        if (active) active.classList.remove("active");
+                        sort.classList.add("active");
+                        activateSort(sort.dataset.sortBy);
+                    });
+                })(sortable[i]);
+            }
         </script>
     </body>
 </html>
